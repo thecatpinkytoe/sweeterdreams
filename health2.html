@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Sleep & Heart Rate Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (min-width: 768px) {
+            .card {
+                padding: 2rem;
+            }
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1a202c;
+            margin-bottom: 0.5rem;
+        }
+        @media (min-width: 768px) {
+            h1 {
+                font-size: 1.75rem;
+            }
+        }
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 1rem;
+        }
+        h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .subtitle {
+            color: #718096;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+        .upload-area {
+            border: 3px dashed #cbd5e0;
+            border-radius: 1rem;
+            padding: 2rem 1rem;
+            text-align: center;
+            background: #f7fafc;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .upload-area:hover, .upload-area:active {
+            background: #edf2f7;
+            border-color: #667eea;
+        }
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            display: inline-block;
+            width: 100%;
+            max-width: 300px;
+            pointer-events: none;
+        }
+        input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            cursor: pointer;
+        }
+        .loading {
+            color: #718096;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .error {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            border-radius: 0.5rem;
+            color: #991b1b;
+            font-size: 0.9rem;
+        }
+        .success {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f0fdf4;
+            border: 2px solid #86efac;
+            border-radius: 0.5rem;
+            color: #166534;
+            font-size: 0.9rem;
+        }
+        .debug-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            color: #374151;
+            font-family: monospace;
+            font-size: 0.75rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (min-width: 640px) {
+            .controls {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (min-width: 1024px) {
+            .controls {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+        .control-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        .control-group select, .control-group input {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.625rem 1rem;
+            font-size: 1rem;
+            -webkit-appearance: none;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (min-width: 640px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (min-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 1.25rem;
+            border-left: 4px solid #667eea;
+        }
+        .stat-card.respiratory {
+            border-left-color: #10b981;
+        }
+        .stat-card.sleep {
+            border-left-color: #8b5cf6;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: #1a202c;
+        }
+        .stat-unit {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-top: 0.25rem;
+        }
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.5rem;
+            height: 200px;
+            margin-top: 1rem;
+        }
+        .bar {
+            flex: 1;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 0.25rem 0.25rem 0 0;
+            position: relative;
+            min-width: 30px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .bar:hover {
+            opacity: 0.8;
+        }
+        .bar-label {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            color: #64748b;
+            white-space: nowrap;
+        }
+        .bar-value {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #1a202c;
+            white-space: nowrap;
+        }
+        .distribution-viz {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.5rem;
+            height: 150px;
+            margin: 1.5rem 0;
+        }
+        .distribution-bar {
+            flex: 1;
+            background: linear-gradient(to top, #10b981, #34d399);
+            border-radius: 0.25rem 0.25rem 0 0;
+            position: relative;
+            min-width: 40px;
+        }
+        .night-viz-container {
+            display: grid;
+            gap: 1rem;
+        }
+        .night-viz-card {
+            background: linear-gradient(135deg, #fafbfc 0%, #f4f6f8 100%);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            border: 2px solid #e5e7eb;
+            transition: all 0.3s;
+        }
+        .night-viz-card.has-events {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        }
+        .night-viz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .night-date {
+            font-weight: 600;
+            color: #1a202c;
+            font-size: 1rem;
+        }
+        .night-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        .night-metric {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .night-metric-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+        }
+        .night-metric-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1a202c;
+        }
+        .event-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: #dc2626;
+            color: white;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .sleep-stage-badge {
+            display: inline-block;
+            padding: 0.25rem 0.625rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+        .event-timeline-item {
+            background: white;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            border-left: 3px solid #dc2626;
+        }
+        .show-more-btn {
+            background: #f3f4f6;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: #374151;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        .show-more-btn:hover, .show-more-btn:active {
+            background: #e5e7eb;
+        }
+        .hidden {
+            display: none;
+        }
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            color: #1e40af;
+            line-height: 1.6;
+        }
+        .btn-secondary {
+            background: #6366f1;
+            color: white;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-secondary:hover, .btn-secondary:active {
+            background: #4f46e5;
+        }
+        .collapse-toggle {
+            background: #f3f4f6;
+            border: none;
+            padding: 0.625rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.2s;
+            width: 100%;
+        }
+        .collapse-toggle:hover, .collapse-toggle:active {
+            background: #e5e7eb;
+        }
+        .collapsible-section {
+            margin-top: 1rem;
+            border-top: 2px solid #e5e7eb;
+            padding-top: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+        }
+        .table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+        .mobile-instructions {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="uploadCard">
+            <div>
+                <h1>😴💓🫁 Sleep, Heart Rate & Respiratory Analysis</h1>
+                <p class="subtitle">Comprehensive analysis of sleep patterns, heart rate events, and respiratory data</p>
+                
+                <div class="mobile-instructions">
+                    <strong>📱 Mobile Users:</strong> For best results on iPhone/iPad:<br>
+                    • Use this file through a simple web server (instructions below)<br>
+                    • Or use the "Share" feature to send to a computer<br>
+                    • Processing may take 10-30 seconds for large files
+                </div>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">📁</div>
+                    <div class="upload-btn">Choose export.xml file</div>
+                    <input type="file" id="fileInput" accept=".xml,text/xml,application/xml">
+                </div>
+                
+                <div id="loading" class="loading hidden">
+                    <div>Processing your health data...</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+                <div id="error" class="error hidden"></div>
+                <div id="success" class="success hidden"></div>
+                <div id="debugInfo" class="debug-info hidden"></div>
+            </div>
+        </div>
+
+        <div id="dashboard" class="hidden">
+            <div class="card">
+                <h1>📊 Sleep, Heart Rate & Respiratory Dashboard</h1>
+                
+                <div class="info-box" id="summaryBox"></div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label>📅 Start Date</label>
+                        <input type="date" id="startDate">
+                    </div>
+                    <div class="control-group">
+                        <label>📅 End Date</label>
+                        <input type="date" id="endDate">
+                    </div>
+                    <div class="control-group">
+                        <label>💓 HR Event Definition</label>
+                        <select id="hrThreshold">
+                            <option value="110">≥110 BPM for 10+ min</option>
+                            <option value="120">≥120 BPM for 10+ min</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>🌙 Sleep Start Time</label>
+                        <input type="time" id="sleepStart" value="22:00">
+                    </div>
+                    <div class="control-group">
+                        <label>☀️ Sleep End Time</label>
+                        <input type="time" id="sleepEnd" value="06:00">
+                    </div>
+                </div>
+
+                <button class="btn-secondary" onclick="updateAnalysis()">🔄 Update Analysis</button>
+            </div>
+
+            <div class="card">
+                <h2>📈 Key Statistics</h2>
+                <div class="stats-grid" id="statsGrid"></div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Event Distribution Analysis</h2>
+                <div id="distributionCharts"></div>
+            </div>
+
+            <div class="card">
+                <h2>🌙 Nightly Analysis with Sleep Stages</h2>
+                <p style="color: #64748b; margin-bottom: 1rem; font-size: 0.875rem;">
+                    Visual breakdown of each night showing HR events, respiratory patterns, and sleep stage correlations
+                </p>
+                <div class="night-viz-container" id="nightVizContainer"></div>
+            </div>
+
+            <div class="card">
+                <h2>😴 Sleep Stage Analysis</h2>
+                <div id="sleepStageAnalysis"></div>
+            </div>
+
+            <div class="card">
+                <h2>🫁 Respiratory Rate Analysis</h2>
+                <div id="respiratoryAnalysis"></div>
+            </div>
+
+            <div class="card collapsible-section">
+                <button class="collapse-toggle" onclick="toggleDetailedData()">
+                    <span id="detailToggleIcon">▼</span>
+                    <span>Detailed Raw Data (Appendix)</span>
+                </button>
+                <div id="detailedDataSection" class="hidden" style="margin-top: 1rem;">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date/Time</th>
+                                    <th>Type</th>
+                                    <th>Value</th>
+                                    <th>Unit</th>
+                                    <th>Sleep Stage</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>💾 Export Clinical Report</h2>
+                <p style="color: #718096; margin-bottom: 1rem;">Generate a comprehensive summary report for your healthcare providers</p>
+                <button class="btn-secondary" onclick="exportReport()">📄 Download Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let sleepData = [];
+        let heartRateData = [];
+        let respiratoryData = [];
+        let sleepAnalysisData = [];
+        
+        const fileInput = document.getElementById('fileInput');
+        const uploadCard = document.getElementById('uploadCard');
+        const uploadArea = document.getElementById('uploadArea');
+        const dashboard = document.getElementById('dashboard');
+        const loading = document.getElementById('loading');
+        const progressFill = document.getElementById('progressFill');
+        const errorDiv = document.getElementById('error');
+        const successDiv = document.getElementById('success');
+        const debugInfo = document.getElementById('debugInfo');
+
+        fileInput.addEventListener('change', handleFileUpload);
+
+        function updateProgress(percent) {
+            progressFill.style.width = percent + '%';
+        }
+
+        function toggleDetailedData() {
+            const section = document.getElementById('detailedDataSection');
+            const icon = document.getElementById('detailToggleIcon');
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+                icon.textContent = '▲';
+            } else {
+                section.classList.add('hidden');
+                icon.textContent = '▼';
+            }
+        }
+
+        function toggleNightEvents(nightKey) {
+            const el = document.getElementById('events-' + nightKey);
+            const btn = document.getElementById('btn-' + nightKey);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                btn.textContent = 'Show Less';
+            } else {
+                el.classList.add('hidden');
+                btn.textContent = btn.getAttribute('data-count') + ' more events';
+            }
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            
+            if (!file) {
+                return;
+            }
+
+            loading.classList.remove('hidden');
+            errorDiv.classList.add('hidden');
+            successDiv.classList.add('hidden');
+            debugInfo.classList.add('hidden');
+            updateProgress(0);
+
+            let debugText = `File: ${file.name}\nSize: ${(file.size / 1024 / 1024).toFixed(2)} MB\n`;
+            debugInfo.textContent = debugText;
+            debugInfo.classList.remove('hidden');
+
+            try {
+                updateProgress(10);
+                
+                const text = await file.text();
+                updateProgress(30);
+                
+                debugText += `Read successfully\nParsing XML...\n`;
+                debugInfo.textContent = debugText;
+                
+                allData = parseHealthData(text);
+                updateProgress(70);
+                
+                debugText += `Parsed ${allData.length} records\n`;
+                debugInfo.textContent = debugText;
+                
+                if (allData.length === 0) {
+                    throw new Error('No valid health records found. Make sure this is an Apple Health export.xml file.');
+                }
+
+                categorizeData();
+                updateProgress(90);
+                
+                debugText += `Sleep: ${sleepData.length}, HR: ${heartRateData.length}, Resp: ${respiratoryData.length}, Sleep Analysis: ${sleepAnalysisData.length}\n`;
+                debugInfo.textContent = debugText;
+                
+                successDiv.textContent = `✅ Successfully loaded ${allData.length.toLocaleString()} health records! Found ${sleepData.length} sleep records, ${heartRateData.length} heart rate records, ${respiratoryData.length} respiratory records, and ${sleepAnalysisData.length} sleep stage records.`;
+                successDiv.classList.remove('hidden');
+
+                updateProgress(100);
+
+                setTimeout(() => {
+                    uploadCard.classList.add('hidden');
+                    dashboard.classList.remove('hidden');
+                    initializeDates();
+                    updateAnalysis();
+                }, 2000);
+
+            } catch (err) {
+                console.error('Error:', err);
+                errorDiv.textContent = 'Error: ' + err.message;
+                errorDiv.classList.remove('hidden');
+                debugText += `\nERROR: ${err.message}\n${err.stack}`;
+                debugInfo.textContent = debugText;
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function parseHealthData(xmlText) {
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                
+                const parseError = xmlDoc.querySelector('parsererror');
+                if (parseError) {
+                    throw new Error('XML parsing failed: ' + parseError.textContent);
+                }
+                
+                const records = xmlDoc.getElementsByTagName('Record');
+                
+                if (records.length === 0) {
+                    throw new Error('No Record elements found in file');
+                }
+                
+                const parsedRecords = [];
+                
+                for (let i = 0; i < records.length; i++) {
+                    try {
+                        const record = records[i];
+                        const type = record.getAttribute('type') || '';
+                        const startDateStr = record.getAttribute('startDate') || record.getAttribute('creationDate');
+                        const endDateStr = record.getAttribute('endDate') || startDateStr;
+                        
+                        if (!startDateStr) continue;
+                        
+                        const startDate = new Date(startDateStr);
+                        const endDate = new Date(endDateStr);
+                        
+                        if (isNaN(startDate.getTime())) continue;
+                        
+                        parsedRecords.push({
+                            type: type,
+                            typeName: type.replace('HKQuantityTypeIdentifier', '').replace('HKCategoryTypeIdentifier', ''),
+                            value: parseFloat(record.getAttribute('value')) || null,
+                            unit: record.getAttribute('unit') || '',
+                            startDate: startDate,
+                            endDate: endDate,
+                            sourceName: record.getAttribute('sourceName') || '',
+                        });
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+                return parsedRecords;
+                
+            } catch (e) {
+                throw new Error('Failed to parse XML: ' + e.message);
+            }
+        }
+
+        function categorizeData() {
+            sleepData = allData.filter(d => 
+                d.typeName.includes('Sleep') && 
+                !d.typeName.includes('Analysis')
+            );
+
+            sleepAnalysisData = allData.filter(d => 
+                d.typeName.includes('SleepAnalysis') ||
+                (d.typeName.includes('Sleep') && d.value !== null)
+            );
+
+            heartRateData = allData.filter(d => 
+                d.typeName.includes('HeartRate') && 
+                d.value && !isNaN(d.value)
+            ).sort((a, b) => a.startDate - b.startDate);
+
+            respiratoryData = allData.filter(d => 
+                (d.typeName.includes('Respiratory') || 
+                d.typeName.includes('RespiratoryRate')) &&
+                d.value && !isNaN(d.value)
+            );
+        }
+
+        function initializeDates() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 14);
+
+            document.getElementById('endDate').valueAsDate = endDate;
+            document.getElementById('startDate').valueAsDate = startDate;
+        }
+
+        function isInSleepWindow(date) {
+            const sleepStart = document.getElementById('sleepStart').value.split(':');
+            const sleepEnd = document.getElementById('sleepEnd').value.split(':');
+            const startHour = parseInt(sleepStart[0]);
+            const endHour = parseInt(sleepEnd[0]);
+            const hour = date.getHours();
+
+            if (startHour < endHour) {
+                return hour >= startHour && hour < endHour;
+            } else {
+                return hour >= startHour || hour < endHour;
+            }
+        }
+
+        function getSleepStageAtTime(date) {
+            const match = sleepAnalysisData.find(d => 
+                date >= d.startDate && date <= d.endDate
+            );
+            
+            if (!match) return 'Unknown';
+            
+            const valueMap = {
+                0: 'In Bed',
+                1: 'Asleep',
+                2: 'Awake',
+                3: 'Core',
+                4: 'Deep',
+                5: 'REM'
+            };
+            
+            return valueMap[match.value] || match.typeName;
+        }
+
+        function detectHREvents(threshold) {
+            const events = [];
+            const minDuration = 10 * 60 * 1000;
+            
+            let eventStart = null;
+            let eventReadings = [];
+            
+            for (let i = 0; i < heartRateData.length; i++) {
+                const reading = heartRateData[i];
+                
+                if (reading.value >= threshold && isInSleepWindow(reading.startDate)) {
+                    if (!eventStart) {
+                        eventStart = reading.startDate;
+                        eventReadings = [reading];
+                    } else {
+                        eventReadings.push(reading);
+                    }
+                } else {
+                    if (eventStart && eventReadings.length > 0) {
+                        const eventEnd = eventReadings[eventReadings.length - 1].startDate;
+                        const duration = eventEnd - eventStart;
+                        
+                        if (duration >= minDuration) {
+                            const avgHR = eventReadings.reduce((sum, r) => sum + r.value, 0) / eventReadings.length;
+                            const maxHR = Math.max(...eventReadings.map(r => r.value));
+                            const sleepStage = getSleepStageAtTime(eventStart);
+                            
+                            events.push({
+                                startTime: eventStart,
+                                endTime: eventEnd,
+                                duration: duration,
+                                avgHR: avgHR,
+                                maxHR: maxHR,
+                                sleepStage: sleepStage,
+                                readings: eventReadings
+                            });
+                        }
+                        eventStart = null;
+                        eventReadings = [];
+                    }
+                }
+            }
+            
+            if (eventStart && eventReadings.length > 0) {
+                const eventEnd = eventReadings[eventReadings.length - 1].startDate;
+                const duration = eventEnd - eventStart;
+                
+                if (duration >= minDuration) {
+                    const avgHR = eventReadings.reduce((sum, r) => sum + r.value, 0) / eventReadings.length;
+                    const maxHR = Math.max(...eventReadings.map(r => r.value));
+                    const sleepStage = getSleepStageAtTime(eventStart);
+                    
+                    events.push({
+                        startTime: eventStart,
+                        endTime: eventEnd,
+                        duration: duration,
+                        avgHR: avgHR,
+                        maxHR: maxHR,
+                        sleepStage: sleepStage,
+                        readings: eventReadings
+                    });
+                }
+            }
+            
+            return events;
+        }
+
+        function updateAnalysis() {
+            const startDate = document.getElementById('startDate').valueAsDate || new Date('2020-01-01');
+            const endDate = document.getElementById('endDate').valueAsDate || new Date();
+            const hrThreshold = parseInt(document.getElementById('hrThreshold').value);
+
+            endDate.setHours(23, 59, 59, 999);
+
+            const hrEvents = detectHREvents(hrThreshold);
+            const filteredEvents = hrEvents.filter(e => e.startTime >= startDate && e.startTime <= endDate);
+
+            updateStats(filteredEvents, startDate, endDate, hrThreshold);
+            createDistributionCharts(filteredEvents, startDate, endDate);
+            createNightlyVisualizations(filteredEvents, startDate, endDate, hrThreshold);
+            analyzeSleepStages(filteredEvents, startDate, endDate);
+            analyzeRespiratory(startDate, endDate);
+            updateDetailedTable(startDate, endDate, hrThreshold);
+        }
+
+        function updateStats(hrEvents, startDate, endDate, threshold) {
+            const nights = groupEventsByNight(hrEvents);
+            const nightCount = Object.keys(nights).length;
+            
+            const eventsPerNight = Object.values(nights).map(n => n.events.length);
+            const avgEventsPerNight = eventsPerNight.length > 0 ? eventsPerNight.reduce((a, b) => a + b, 0) / eventsPerNight.length : 0;
+            const medianEvents = eventsPerNight.length > 0 ? calculateMedian(eventsPerNight) : 0;
+            const modeEvents = eventsPerNight.length > 0 ? calculateMode(eventsPerNight) : 0;
+            const maxEvents = eventsPerNight.length > 0 ? Math.max(...eventsPerNight) : 0;
+            const minEvents = eventsPerNight.length > 0 ? Math.min(...eventsPerNight) : 0;
+
+            const avgEventDuration = hrEvents.length > 0 ? hrEvents.reduce((sum, e) => sum + e.duration, 0) / hrEvents.length / 60000 : 0;
+            const avgEventHR = hrEvents.length > 0 ? hrEvents.reduce((sum, e) => sum + e.avgHR, 0) / hrEvents.length : 0;
+
+            const sleepStart = document.getElementById('sleepStart').value;
+            const sleepEnd = document.getElementById('sleepEnd').value;
+
+            const respiratoryFiltered = respiratoryData.filter(d => 
+                d.startDate >= startDate && d.startDate <= endDate && isInSleepWindow(d.startDate)
+            );
+            const avgRespRate = respiratoryFiltered.length > 0 ? respiratoryFiltered.reduce((sum, d) => sum + d.value, 0) / respiratoryFiltered.length : 0;
+
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">Total HR Events</div>
+                    <div class="stat-value">${hrEvents.length}</div>
+                    <div class="stat-unit">≥${threshold} BPM for 10+ min</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Events/Night</div>
+                    <div class="stat-value">${avgEventsPerNight.toFixed(1)}</div>
+                    <div class="stat-unit">mean across ${nightCount} nights</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Median Events/Night</div>
+                    <div class="stat-value">${medianEvents}</div>
+                    <div class="stat-unit">50th percentile</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Mode Events/Night</div>
+                    <div class="stat-value">${modeEvents}</div>
+                    <div class="stat-unit">most frequent value</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Max Events/Night</div>
+                    <div class="stat-value" style="color: #dc2626;">${maxEvents}</div>
+                    <div class="stat-unit">worst night</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Min Events/Night</div>
+                    <div class="stat-value" style="color: #10b981;">${minEvents}</div>
+                    <div class="stat-unit">best night</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Event Duration</div>
+                    <div class="stat-value">${avgEventDuration.toFixed(1)}</div>
+                    <div class="stat-unit">minutes per event</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Event Heart Rate</div>
+                    <div class="stat-value">${avgEventHR.toFixed(0)}</div>
+                    <div class="stat-unit">BPM during events</div>
+                </div>
+                <div class="stat-card respiratory">
+                    <div class="stat-label">Avg Respiratory Rate</div>
+                    <div class="stat-value">${avgRespRate.toFixed(1)}</div>
+                    <div class="stat-unit">breaths/min (sleep)</div>
+                </div>
+                <div class="stat-card sleep">
+                    <div class="stat-label">Sleep Records</div>
+                    <div class="stat-value">${sleepAnalysisData.filter(d => d.startDate >= startDate && d.startDate <= endDate).length}</div>
+                    <div class="stat-unit">stage transitions</div>
+                </div>
+            `;
+
+            document.getElementById('summaryBox').innerHTML = `
+                <strong>📋 Analysis Summary (${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}):</strong><br><br>
+                You experienced <strong>${hrEvents.length} sustained heart rate events</strong> (≥${threshold} BPM for 10+ consecutive minutes) during your designated sleep hours (${sleepStart}-${sleepEnd}).<br><br>
+                <strong>Per-Night Breakdown:</strong><br>
+                • Average: ${avgEventsPerNight.toFixed(1)} events per sleep period<br>
+                • Median: ${medianEvents} events per sleep period<br>
+                • Mode: ${modeEvents} events (most common)<br>
+                • Range: ${minEvents}-${maxEvents} events per night<br><br>
+                ${hrEvents.length > 15 ? '<strong>⚠️ Clinical Note:</strong> The frequency and duration of elevated heart rate episodes may correlate with reported nightmare activity and sleep disturbances. Consider sharing this data with your healthcare provider.' : ''}
+            `;
+        }
+
+        function calculateMedian(arr) {
+            if (arr.length === 0) return 0;
+            const sorted = [...arr].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+        }
+
+        function calculateMode(arr) {
+            if (arr.length === 0) return 0;
+            const freq = {};
+            arr.forEach(val => freq[val] = (freq[val] || 0) + 1);
+            let maxFreq = 0;
+            let mode = 0;
+            for (const [val, count] of Object.entries(freq)) {
+                if (count > maxFreq) {
+                    maxFreq = count;
+                    mode = parseInt(val);
+                }
+            }
+            return mode;
+        }
+
+        function groupEventsByNight(events) {
+            const nights = {};
+            
+            events.forEach(event => {
+                let nightDate = new Date(event.startTime);
+                const hour = event.startTime.getHours();
+                const sleepStart = parseInt(document.getElementById('sleepStart').value.split(':')[0]);
+                
+                if (hour < sleepStart && hour < 12) {
+                    nightDate.setDate(nightDate.getDate() - 1);
+                }
+                
+                const nightKey = nightDate.toDateString();
+                if (!nights[nightKey]) {
+                    nights[nightKey] = {
+                        date: nightDate,
+                        events: []
+                    };
+                }
+                nights[nightKey].events.push(event);
+            });
+            
+            return nights;
+        }
+
+        function createDistributionCharts(hrEvents, startDate, endDate) {
+            const nights = groupEventsByNight(hrEvents);
+            const eventsPerNight = Object.values(nights).map(n => n.events.length);
+            
+            const histogram = {};
+            eventsPerNight.forEach(count => {
+                histogram[count] = (histogram[count] || 0) + 1;
+            });
+            
+            const maxCount = Math.max(...Object.values(histogram), 1);
+            
+            let histogramHTML = '<h3>Distribution of Events Per Night</h3>';
+            histogramHTML += '<div class="distribution-viz">';
+            
+            const maxEventCount = Math.max(...eventsPerNight, 0);
+            for (let i = 0; i <= maxEventCount; i++) {
+                const count = histogram[i] || 0;
+                const height = maxCount > 0 ? (count / maxCount * 100) : 0;
+                histogramHTML += `
+                    <div class="distribution-bar" style="height: ${height}%">
+                        <div class="bar-value">${count}</div>
+                        <div class="bar-label">${i} events</div>
+                    </div>
+                `;
+            }
+            
+            histogramHTML += '</div>';
+            histogramHTML += `<p style="color: #64748b; font-size: 0.875rem; margin-top: 2rem;">This chart shows how many nights had each number of HR events. For example, if the bar above "2 events" shows "5", that means 5 nights had exactly 2 HR events.</p>`;
+            
+            const stageCount = {};
+            hrEvents.forEach(event => {
+                const stage = event.sleepStage;
+                stageCount[stage] = (stageCount[stage] || 0) + 1;
+            });
+            
+            if (Object.keys(stageCount).length > 0) {
+                const maxStageCount = Math.max(...Object.values(stageCount));
+                
+                histogramHTML += '<h3 style="margin-top: 2rem;">HR Events by Sleep Stage</h3>';
+                histogramHTML += '<div class="distribution-viz">';
+                
+                Object.entries(stageCount).forEach(([stage, count]) => {
+                    const height = maxStageCount > 0 ? (count / maxStageCount * 100) : 0;
+                    histogramHTML += `
+                        <div class="distribution-bar" style="height: ${height}%; background: linear-gradient(to top, #8b5cf6, #a78bfa);">
+                            <div class="bar-value">${count}</div>
+                            <div class="bar-label">${stage}</div>
+                        </div>
+                    `;
+                });
+                
+                histogramHTML += '</div>';
+                histogramHTML += `<p style="color: #64748b; font-size: 0.875rem; margin-top: 2rem;">This shows which sleep stages were most associated with elevated heart rate events.</p>`;
+            }
+            
+            document.getElementById('distributionCharts').innerHTML = histogramHTML;
+        }
+
+        function createNightlyVisualizations(hrEvents, startDate, endDate, threshold) {
+            const nights = groupEventsByNight(hrEvents);
+            const sortedNights = Object.entries(nights).sort((a, b) => new Date(b[0]) - new Date(a[0]));
+            
+            let html = '';
+            
+            sortedNights.forEach(([dateKey, nightData]) => {
+                const events = nightData.events;
+                const totalEvents = events.length;
+                const avgHR = events.reduce((sum, e) => sum + e.avgHR, 0) / events.length;
+                const maxHR = Math.max(...events.map(e => e.maxHR));
+                const totalDuration = events.reduce((sum, e) => sum + e.duration, 0) / 60000;
+                
+                const nightStart = new Date(nightData.date);
+                nightStart.setHours(parseInt(document.getElementById('sleepStart').value.split(':')[0]), 0, 0, 0);
+                const nightEnd = new Date(nightStart);
+                nightEnd.setHours(nightEnd.getHours() + 12);
+                
+                const nightRespData = respiratoryData.filter(d => 
+                    d.startDate >= nightStart && d.startDate <= nightEnd
+                );
+                
+                const avgRespRate = nightRespData.length > 0 ? 
+                    nightRespData.reduce((sum, d) => sum + d.value, 0) / nightRespData.length : null;
+                
+                const stagesSet = new Set(events.map(e => e.sleepStage));
+                
+                const nightKey = dateKey.replace(/\s/g, '-');
+                
+                html += `
+                    <div class="night-viz-card ${totalEvents > 0 ? 'has-events' : ''}">
+                        <div class="night-viz-header">
+                            <div class="night-date">
+                                🌙 ${nightData.date.toLocaleDateString('en-US', { 
+                                    weekday: 'long', 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                })}
+                            </div>
+                            ${totalEvents > 0 ? `<div class="event-badge">⚠️ ${totalEvents} HR Event${totalEvents > 1 ? 's' : ''}</div>` : ''}
+                        </div>
+                        
+                        <div class="night-metrics">
+                            <div class="night-metric">
+                                <div class="night-metric-label">Avg HR During Events</div>
+                                <div class="night-metric-value" style="color: #dc2626;">${avgHR.toFixed(0)} <span style="font-size: 0.75rem; color: #64748b;">BPM</span></div>
+                            </div>
+                            <div class="night-metric">
+                                <div class="night-metric-label">Peak HR</div>
+                                <div class="night-metric-value" style="color: #ef4444;">${maxHR.toFixed(0)} <span style="font-size: 0.75rem; color: #64748b;">BPM</span></div>
+                            </div>
+                            <div class="night-metric">
+                                <div class="night-metric-label">Total Event Duration</div>
+                                <div class="night-metric-value" style="color: #f59e0b;">${totalDuration.toFixed(0)} <span style="font-size: 0.75rem; color: #64748b;">min</span></div>
+                            </div>
+                            ${avgRespRate !== null ? `
+                            <div class="night-metric">
+                                <div class="night-metric-label">Avg Respiratory Rate</div>
+                                <div class="night-metric-value" style="color: #10b981;">${avgRespRate.toFixed(1)} <span style="font-size: 0.75rem; color: #64748b;">br/min</span></div>
+                            </div>
+                            ` : ''}
+                            <div class="night-metric" style="grid-column: 1 / -1;">
+                                <div class="night-metric-label">Sleep Stages During Events</div>
+                                <div style="margin-top: 0.5rem;">
+                                    ${Array.from(stagesSet).map(stage => 
+                                        `<span class="sleep-stage-badge">${stage}</span>`
+                                    ).join(' ')}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 1rem;">
+                            <div style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.5rem;">Event Timeline:</div>
+                            ${events.slice(0, 3).map(event => `
+                                <div class="event-timeline-item">
+                                    <strong>${event.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</strong> - 
+                                    ${event.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
+                                    (${(event.duration / 60000).toFixed(0)} min) • 
+                                    Avg: ${event.avgHR.toFixed(0)} BPM • 
+                                    Max: ${event.maxHR.toFixed(0)} BPM • 
+                                    <span class="sleep-stage-badge" style="margin-left: 0.5rem;">${event.sleepStage}</span>
+                                </div>
+                            `).join('')}
+                            ${events.length > 3 ? `
+                                <div id="events-${nightKey}" class="hidden">
+                                    ${events.slice(3).map(event => `
+                                        <div class="event-timeline-item">
+                                            <strong>${event.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</strong> - 
+                                            ${event.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
+                                            (${(event.duration / 60000).toFixed(0)} min) • 
+                                            Avg: ${event.avgHR.toFixed(0)} BPM • 
+                                            Max: ${event.maxHR.toFixed(0)} BPM • 
+                                            <span class="sleep-stage-badge" style="margin-left: 0.5rem;">${event.sleepStage}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <button id="btn-${nightKey}" class="show-more-btn" data-count="+${events.length - 3}" onclick="toggleNightEvents('${nightKey}')">
+                                    +${events.length - 3} more events
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            if (html === '') {
+                html = '<p style="color: #64748b;">No nights with sustained HR events in this period.</p>';
+            }
+            
+            document.getElementById('nightVizContainer').innerHTML = html;
+        }
+
+        function analyzeSleepStages(hrEvents, startDate, endDate) {
+            const filteredSleepData = sleepAnalysisData.filter(d => 
+                d.startDate >= startDate && d.startDate <= endDate
+            );
+            
+            const stageDurations = {};
+            const stageEvents = {};
+            
+            filteredSleepData.forEach(record => {
+                const stage = getSleepStageFromRecord(record);
+                const duration = (record.endDate - record.startDate) / 60000;
+                stageDurations[stage] = (stageDurations[stage] || 0) + duration;
+                stageEvents[stage] = (stageEvents[stage] || 0);
+            });
+            
+            hrEvents.forEach(event => {
+                const stage = event.sleepStage;
+                stageEvents[stage] = (stageEvents[stage] || 0) + 1;
+            });
+            
+            let html = '<h3>Sleep Stage Duration & Events</h3>';
+            html += '<div class="night-metrics" style="margin-top: 1rem;">';
+            
+            Object.entries(stageDurations).sort((a, b) => b[1] - a[1]).forEach(([stage, duration]) => {
+                const events = stageEvents[stage] || 0;
+                const hours = (duration / 60).toFixed(1);
+                html += `
+                    <div class="night-metric">
+                        <div class="night-metric-label">${stage}</div>
+                        <div class="night-metric-value">${hours} <span style="font-size: 0.75rem; color: #64748b;">hrs</span></div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">${events} HR events</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            const maxEventStage = Object.entries(stageEvents).sort((a, b) => b[1] - a[1])[0];
+            if (maxEventStage && maxEventStage[1] > 0) {
+                html += `
+                    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem;">
+                        <strong>💡 Insight:</strong> Most HR events (${maxEventStage[1]}) occurred during <strong>${maxEventStage[0]}</strong> sleep.
+                        ${maxEventStage[0] === 'REM' ? ' REM sleep is when most vivid dreams and nightmares occur, which may explain the elevated heart rate.' : ''}
+                    </div>
+                `;
+            }
+            
+            document.getElementById('sleepStageAnalysis').innerHTML = html;
+        }
+
+        function getSleepStageFromRecord(record) {
+            const valueMap = {
+                0: 'In Bed',
+                1: 'Asleep',
+                2: 'Awake',
+                3: 'Core',
+                4: 'Deep',
+                5: 'REM'
+            };
+            
+            if (record.value !== null && valueMap[record.value]) {
+                return valueMap[record.value];
+            }
+            
+            if (record.typeName.includes('Awake')) return 'Awake';
+            if (record.typeName.includes('REM')) return 'REM';
+            if (record.typeName.includes('Deep')) return 'Deep';
+            if (record.typeName.includes('Core')) return 'Core';
+            if (record.typeName.includes('InBed')) return 'In Bed';
+            
+            return 'Asleep';
+        }
+
+        function analyzeRespiratory(startDate, endDate) {
+            const filteredResp = respiratoryData.filter(d => 
+                d.startDate >= startDate && d.startDate <= endDate && isInSleepWindow(d.startDate)
+            );
+            
+            if (filteredResp.length === 0) {
+                document.getElementById('respiratoryAnalysis').innerHTML = 
+                    '<p style="color: #64748b;">No respiratory rate data available for this period.</p>';
+                return;
+            }
+            
+            const rates = filteredResp.map(d => d.value);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const minRate = Math.min(...rates);
+            const maxRate = Math.max(...rates);
+            const medianRate = calculateMedian(rates);
+            
+            const abnormalLow = filteredResp.filter(d => d.value < 12);
+            const abnormalHigh = filteredResp.filter(d => d.value > 20);
+            
+            let html = '<h3>Respiratory Rate Statistics</h3>';
+            html += '<div class="night-metrics" style="margin-top: 1rem;">';
+            html += `
+                <div class="night-metric">
+                    <div class="night-metric-label">Average Rate</div>
+                    <div class="night-metric-value">${avgRate.toFixed(1)} <span style="font-size: 0.75rem; color: #64748b;">br/min</span></div>
+                </div>
+                <div class="night-metric">
+                    <div class="night-metric-label">Median Rate</div>
+                    <div class="night-metric-value">${medianRate.toFixed(1)} <span style="font-size: 0.75rem; color: #64748b;">br/min</span></div>
+                </div>
+                <div class="night-metric">
+                    <div class="night-metric-label">Min Rate</div>
+                    <div class="night-metric-value" style="color: ${minRate < 12 ? '#dc2626' : '#10b981'};">${minRate.toFixed(1)} <span style="font-size: 0.75rem; color: #64748b;">br/min</span></div>
+                </div>
+                <div class="night-metric">
+                    <div class="night-metric-label">Max Rate</div>
+                    <div class="night-metric-value" style="color: ${maxRate > 20 ? '#dc2626' : '#10b981'};">${maxRate.toFixed(1)} <span style="font-size: 0.75rem; color: #64748b;">br/min</span></div>
+                </div>
+                <div class="night-metric">
+                    <div class="night-metric-label">Low Readings</div>
+                    <div class="night-metric-value" style="color: ${abnormalLow.length > 0 ? '#f59e0b' : '#10b981'};">${abnormalLow.length}</div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">&lt;12 br/min</div>
+                </div>
+                <div class="night-metric">
+                    <div class="night-metric-label">High Readings</div>
+                    <div class="night-metric-value" style="color: ${abnormalHigh.length > 0 ? '#f59e0b' : '#10b981'};">${abnormalHigh.length}</div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">&gt;20 br/min</div>
+                </div>
+            `;
+            html += '</div>';
+            
+            if (abnormalLow.length > 0 || abnormalHigh.length > 0) {
+                html += `
+                    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem;">
+                        <strong>⚠️ Abnormal Respiratory Readings Detected:</strong><br>
+                        ${abnormalLow.length > 0 ? `• ${abnormalLow.length} readings below normal range (bradypnea)<br>` : ''}
+                        ${abnormalHigh.length > 0 ? `• ${abnormalHigh.length} readings above normal range (tachypnea)<br>` : ''}
+                        Normal sleep respiratory rate: 12-20 breaths/minute
+                    </div>
+                `;
+            }
+            
+            document.getElementById('respiratoryAnalysis').innerHTML = html;
+        }
+
+        function updateDetailedTable(startDate, endDate, threshold) {
+            const filteredData = allData.filter(d => 
+                d.startDate >= startDate && d.startDate <= endDate && isInSleepWindow(d.startDate)
+            ).sort((a, b) => b.startDate - a.startDate);
+            
+            const rows = filteredData.slice(0, 500).map(d => {
+                const sleepStage = getSleepStageAtTime(d.startDate);
+                const isHighHR = d.typeName.includes('HeartRate') && d.value >= threshold;
+                
+                return `
+                    <tr style="${isHighHR ? 'background: #fef3c7;' : ''}">
+                        <td>${d.startDate.toLocaleString()}</td>
+                        <td>${d.typeName}</td>
+                        <td>${d.value ? d.value.toFixed(1) : 'N/A'}</td>
+                        <td>${d.unit}</td>
+                        <td><span class="sleep-stage-badge">${sleepStage}</span></td>
+                    </tr>
+                `;
+            }).join('');
+            
+            document.getElementById('dataTableBody').innerHTML = rows || 
+                '<tr><td colspan="5" style="text-align: center; color: #64748b;">No data</td></tr>';
+        }
+
+        function exportReport() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const threshold = document.getElementById('hrThreshold').value;
+            const sleepStart = document.getElementById('sleepStart').value;
+            const sleepEnd = document.getElementById('sleepEnd').value;
+
+            const hrEvents = detectHREvents(parseInt(threshold));
+            const nights = groupEventsByNight(hrEvents);
+            const eventsPerNight = Object.values(nights).map(n => n.events.length);
+
+            let report = `COMPREHENSIVE SLEEP, HEART RATE & RESPIRATORY ANALYSIS
+
+Generated: ${new Date().toLocaleString()}
+Patient: [Your Name]
+Analysis Period: ${startDate} to ${endDate}
+Sleep Window: ${sleepStart} - ${sleepEnd}
+HR Event Definition: Sustained ≥${threshold} BPM for 10+ consecutive minutes
+
+═══════════════════════════════════════════════════════════════════
+
+KEY FINDINGS:
+
+Total HR Events: ${hrEvents.length}
+Average Events per Night: ${eventsPerNight.length > 0 ? (eventsPerNight.reduce((a,b) => a+b, 0) / eventsPerNight.length).toFixed(1) : 0}
+Median Events per Night: ${calculateMedian(eventsPerNight)}
+Mode Events per Night: ${calculateMode(eventsPerNight)}
+Range: ${eventsPerNight.length > 0 ? Math.min(...eventsPerNight) : 0} - ${eventsPerNight.length > 0 ? Math.max(...eventsPerNight) : 0} events per night
+
+Average Event Duration: ${hrEvents.length > 0 ? (hrEvents.reduce((s, e) => s + e.duration, 0) / hrEvents.length / 60000).toFixed(1) : 0} minutes
+Average HR During Events: ${hrEvents.length > 0 ? (hrEvents.reduce((s, e) => s + e.avgHR, 0) / hrEvents.length).toFixed(0) : 0} BPM
+Peak HR Recorded: ${hrEvents.length > 0 ? Math.max(...hrEvents.map(e => e.maxHR)).toFixed(0) : 0} BPM
+
+═══════════════════════════════════════════════════════════════════
+
+SLEEP STAGE CORRELATION:
+
+`;
+            const stageCount = {};
+            hrEvents.forEach(e => stageCount[e.sleepStage] = (stageCount[e.sleepStage] || 0) + 1);
+            Object.entries(stageCount).sort((a, b) => b[1] - a[1]).forEach(([stage, count]) => {
+                report += `${stage}: ${count} events (${(count/hrEvents.length*100).toFixed(1)}%)\n`;
+            });
+
+            report += `\n═══════════════════════════════════════════════════════════════════\n\nNIGHTLY BREAKDOWN:\n\n`;
+            
+            Object.entries(nights).sort((a, b) => new Date(b[0]) - new Date(a[0])).forEach(([date, data]) => {
+                report += `\n${new Date(date).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}:\n`;
+                report += `  Events: ${data.events.length}\n`;
+                data.events.forEach((event, i) => {
+                    report += `    ${i+1}. ${event.startTime.toLocaleTimeString()} - ${event.endTime.toLocaleTimeString()}\n`;
+                    report += `       Duration: ${(event.duration/60000).toFixed(0)} min | Avg HR: ${event.avgHR.toFixed(0)} BPM | Max HR: ${event.maxHR.toFixed(0)} BPM | Stage: ${event.sleepStage}\n`;
+                });
+            });
+
+            report += `\n\n═══════════════════════════════════════════════════════════════════\n\nCLINICAL RECOMMENDATIONS:\n\n`;
+            report += `1. Frequent sustained tachycardia during sleep warrants clinical evaluation\n`;
+            report += `2. Correlation with sleep stages suggests possible REM-related phenomena\n`;
+            report += `3. Consider sleep study (polysomnography) for comprehensive assessment\n`;
+            report += `4. Rule out sleep apnea, PTSD-related nightmares, or other sleep disorders\n`;
+            report += `5. Evaluate for anxiety, stress, or other psychological factors\n\n`;
+
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sleep-hr-respiratory-analysis-${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>════════════════════════════════════
+
+EXECUTIVE SUMMARY:
+
+This analysis examines correlations between elevated heart rate during sleep,
+respiratory patterns, sleep stage transitions, and reported chronic nightmares
+(4-6 nights per week).
+
+═══════════════════════════════
