@@ -1,0 +1,904 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Sleep Analysis</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 1rem; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem; }
+        h1 { font-size: 1.5rem; font-weight: bold; color: #1a202c; margin-bottom: 0.5rem; }
+        h2 { font-size: 1.25rem; font-weight: 600; color: #1a202c; margin-bottom: 1rem; }
+        h3 { font-size: 1.1rem; font-weight: 600; color: #374151; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .subtitle { color: #718096; margin-bottom: 1.5rem; font-size: 0.9rem; }
+        .upload-area { border: 3px dashed #cbd5e0; border-radius: 1rem; padding: 2rem; text-align: center; background: #f7fafc; cursor: pointer; position: relative; }
+        .upload-area:hover { background: #edf2f7; border-color: #667eea; }
+        .upload-btn { background: #667eea; color: white; padding: 1rem 2rem; border-radius: 0.5rem; font-weight: 600; border: none; font-size: 1rem; pointer-events: none; }
+        input[type="file"] { position: absolute; opacity: 0; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer; }
+        .loading { color: #718096; margin-top: 1rem; }
+        .progress-bar { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; margin-top: 1rem; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s; }
+        .error { margin-top: 1rem; padding: 1rem; background: #fef2f2; border: 2px solid #fecaca; border-radius: 0.5rem; color: #991b1b; }
+        .success { margin-top: 1rem; padding: 1rem; background: #f0fdf4; border: 2px solid #86efac; border-radius: 0.5rem; color: #166534; }
+        .hidden { display: none !important; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .control-group label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem; }
+        .control-group select, .control-group input { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.9rem; }
+        .btn { background: #6366f1; color: white; padding: 0.625rem 1.25rem; border-radius: 0.5rem; border: none; cursor: pointer; font-size: 0.875rem; font-weight: 600; }
+        .btn:hover { background: #4f46e5; }
+        .btn:disabled { background: #9ca3af; cursor: not-allowed; }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+        .stat-card { background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 0.5rem; padding: 1rem; border-left: 3px solid #667eea; }
+        .stat-card.heart { border-left-color: #ef4444; }
+        .stat-card.resp { border-left-color: #10b981; }
+        .stat-card.sleep { border-left-color: #8b5cf6; }
+        .stat-card.oxygen { border-left-color: #3b82f6; }
+        .stat-label { font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #1a202c; }
+        .stat-unit { font-size: 0.7rem; color: #94a3b8; }
+        .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; color: #1e40af; line-height: 1.5; font-size: 0.9rem; }
+        .warning-box { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 0.75rem; padding: 1rem; margin: 1rem 0; color: #92400e; line-height: 1.5; }
+        .updating-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .updating-card { background: white; padding: 2rem; border-radius: 1rem; max-width: 500px; width: 90%; text-align: center; }
+        .updating-card h2 { margin-bottom: 1rem; }
+        .updating-card .progress-bar { margin: 1rem 0; }
+        .updating-card p { color: #64748b; margin: 0.5rem 0; font-size: 0.9rem; }
+        .cancel-btn { margin-top: 1rem; }
+        .no-data-message { text-align: center; padding: 2rem; color: #64748b; font-style: italic; background: #f9fafb; border-radius: 0.5rem; border: 2px dashed #e5e7eb; }
+        .plain-english { background: #f0fdf4; border-left: 3px solid #10b981; padding: 0.75rem; margin: 0.75rem 0; border-radius: 0 0.5rem 0.5rem 0; font-size: 0.85rem; }
+        .tech-details { background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; margin: 0.5rem 0; border-radius: 0.5rem; font-size: 0.8rem; line-height: 1.6; }
+        .collapse-toggle { background: #f3f4f6; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: #374151; display: flex; align-items: center; gap: 0.5rem; }
+        .collapse-toggle:hover { background: #e5e7eb; }
+        .sleep-mode-toggle { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+        .mode-btn { padding: 0.5rem 1rem; border: 2px solid #d1d5db; background: white; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: #374151; transition: all 0.2s; }
+        .mode-btn.active { background: #6366f1; color: white; border-color: #6366f1; }
+        .chart-container { background: #f9fafb; border-radius: 0.75rem; padding: 1.5rem; margin: 1rem 0; }
+        .scrollable-section { max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; }
+        .night-card { background: #fafbfc; border-radius: 0.5rem; padding: 1rem; margin-bottom: 0.75rem; border: 1px solid #e5e7eb; }
+        .night-card.has-events { border-color: #fca5a5; background: #fef2f2; }
+        .night-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
+        .night-date { font-weight: 600; color: #1a202c; }
+        .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: 600; }
+        .badge-danger { background: #fecaca; color: #991b1b; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-rem { background: #fce7f3; color: #be185d; }
+        .badge-deep { background: #dbeafe; color: #1e40af; }
+        .badge-core { background: #e0e7ff; color: #4338ca; }
+        .badge-awake { background: #fef3c7; color: #b45309; }
+        .badge-unknown { background: #f3f4f6; color: #6b7280; }
+        .night-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; }
+        .night-metric { background: white; padding: 0.5rem; border-radius: 0.25rem; text-align: center; }
+        .night-metric-label { font-size: 0.65rem; color: #64748b; }
+        .night-metric-value { font-size: 1rem; font-weight: 700; }
+        .traffic-light { display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-right: 0.5rem; }
+        .traffic-light.red { background: #ef4444; }
+        .traffic-light.yellow { background: #f59e0b; }
+        .traffic-light.green { background: #10b981; }
+        .data-filter-section { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; margin: 1rem 0; }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem; }
+        .checkbox-group label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="uploadCard">
+            <h1>🌙 Enhanced Sleep Analysis</h1>
+            <p class="subtitle">Comprehensive analysis of sleep patterns, heart rate events, blood oxygen, and respiratory data from Apple Health exports</p>
+            
+            <div class="data-filter-section">
+                <label style="font-weight: 600; color: #374151;">📊 Data Types to Load (reduce memory usage for large files):</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="loadSleep" checked=""> Sleep Stages</label>
+                    <label><input type="checkbox" id="loadHR" checked=""> Heart Rate</label>
+                    <label><input type="checkbox" id="loadResp" checked=""> Respiratory Rate</label>
+                    <label><input type="checkbox" id="loadO2" checked=""> Blood Oxygen</label>
+                </div>
+                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">💡 Tip: For very large files (100MB+), try loading only the data types you need.</p>
+            </div>
+            
+            <div class="upload-area">
+                <div style="font-size: 3rem; margin-bottom: 0.5rem;">📁</div>
+                <div class="upload-btn">Choose export.xml file</div>
+                <input type="file" id="fileInput" accept=".xml">
+            </div>
+            
+            <div id="loading" class="loading hidden">
+                <div id="loadingStatus">Processing your health data...</div>
+                <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                <div id="progressText" style="margin-top:0.5rem;font-size:0.85rem;color:#64748b;"></div>
+                <button class="btn btn-danger cancel-btn hidden" id="cancelUploadBtn" onclick="cancelProcessing()">Cancel</button>
+            </div>
+            <div id="error" class="error hidden"></div>
+            <div id="success" class="success hidden"></div>
+        </div>
+
+        <div id="dashboard" class="hidden">
+            <div class="card">
+                <h1>📊 Sleep &amp; Health Analysis Dashboard</h1>
+                <div class="info-box" id="summaryBox"></div>
+                <div id="partialDataAlert" class="hidden"></div>
+                
+                <h3>⚙️ Analysis Settings</h3>
+                <div class="controls">
+                    <div class="control-group"><label>📅 Start Date</label><input type="date" id="startDate"></div>
+                    <div class="control-group"><label>📅 End Date</label><input type="date" id="endDate"></div>
+                    <div class="control-group"><label>❤️ HR Event Threshold</label><select id="hrThreshold"><option value="110">≥110 BPM</option><option value="120">≥120 BPM</option><option value="100">≥100 BPM</option></select></div>
+                </div>
+                
+                <div class="control-group">
+                    <label>🌙 Sleep Time Detection</label>
+                    <div class="sleep-mode-toggle">
+                        <button class="mode-btn active" id="autoModeBtn" onclick="setSleepMode('auto')">Automatic</button>
+                        <button class="mode-btn" id="manualModeBtn" onclick="setSleepMode('manual')">Manual</button>
+                    </div>
+                </div>
+                
+                <div id="manualSleepControls" class="hidden controls">
+                    <div class="control-group"><label>🌙 Sleep Start</label><input type="time" id="sleepStart" value="22:00"></div>
+                    <div class="control-group"><label>☀️ Sleep End</label><input type="time" id="sleepEnd" value="06:00"></div>
+                </div>
+                
+                <div id="partialDataControls" class="hidden" style="margin: 1rem 0;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="includePartialData" checked="">
+                        <span>Include nights with partial sleep tracking in analysis</span>
+                    </label>
+                </div>
+                
+                <button class="btn" id="updateBtn" onclick="updateAnalysis()">🔄 Update Analysis</button>
+            </div>
+
+            <div class="card">
+                <h2>📈 Key Statistics</h2>
+                <div id="heartStats"><h3>❤️ Heart Rate During Sleep</h3><div class="stats-grid" id="heartStatsGrid"></div></div>
+                <div id="respStats"><h3>💨 Respiratory Data</h3><div class="stats-grid" id="respStatsGrid"></div></div>
+                <div id="oxygenStats"><h3>🫧 Blood Oxygen</h3><div class="stats-grid" id="oxygenStatsGrid"></div></div>
+                <div id="sleepStats"><h3>😴 Sleep Stages</h3><div class="stats-grid" id="sleepStatsGrid"></div></div>
+            </div>
+
+            <div class="card">
+                <h2>🌙 Sleep Stage Timeline</h2>
+                <div id="sleepTimeline"></div>
+            </div>
+
+            <div class="card">
+                <h2>❤️ Heart Rate Events by Sleep Stage</h2>
+                <div id="hrByStageChart"></div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Statistical Analysis</h2>
+                <div id="statisticalAnalysis"></div>
+            </div>
+
+            <div class="card">
+                <h2>🩺 Clinical Pattern Analysis</h2>
+                <div id="clinicalAnalysis"></div>
+            </div>
+
+            <div class="card">
+                <h2>🌙 Nightly Analysis</h2>
+                <div class="scrollable-section" id="nightlyContainer"></div>
+            </div>
+
+            <div class="card">
+                <h2>💾 Export Report</h2>
+                <button class="btn" onclick="exportReport()">📄 Download Report</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="updateOverlay" class="updating-overlay hidden">
+        <div class="updating-card">
+            <h2 id="overlayTitle">Updating Analysis...</h2>
+            <div class="progress-bar"><div class="progress-fill" id="updateProgressFill"></div></div>
+            <p id="updateProgressText">Processing your data...</p>
+            <p id="updateProgressDetail" style="font-size: 0.75rem;"></p>
+            <button class="btn btn-danger cancel-btn" onclick="cancelProcessing()">Cancel</button>
+        </div>
+    </div>
+
+<script>
+// ============== GLOBAL STATE ==============
+let rawData = { sleep: [], hr: [], resp: [], o2: [] };
+let detectedSleepPeriods = [];
+let partialDataNights = [];
+let sleepMode = 'auto';
+let currentWorker = null;
+let isProcessing = false;
+
+// ============== WEB WORKER CODE ==============
+
+
+// worker.js has been extracted to a separate file (worker.js)
+
+
+
+// ============== WORKER CREATION ==============
+function createWorker() {
+    // Preferred: load external worker file (required for iOS / mobile browsers and GitHub Pages)
+    try {
+        return new Worker('worker.js');
+    } catch (err) {
+        console.error('Failed to create Worker from worker.js:', err);
+        // Attempt a fetch+blob fallback (works if same-origin and fetch is allowed)
+        try {
+            // NOTE: this fallback is asynchronous; code that expects an immediate worker must handle null
+            console.warn('Attempting fetch+blob fallback for worker.js');
+            // Return a proxy worker that will be replaced when fetched code is available
+            const placeholder = {
+                postMessage: function() { console.error('Worker not ready'); },
+                terminate: function() {}
+            };
+            fetch('worker.js').then(r => r.text()).then(code => {
+                const w = new Worker(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })));
+                // Replace global currentWorker if needed by application logic
+                if (window.currentWorker && typeof window.currentWorker.terminate === 'function') {
+                    try { window.currentWorker.terminate(); } catch(e){}
+                }
+                window.currentWorker = w;
+                // Re-hook message forwarding if app expects that (app uses currentWorker variable)
+            }).catch(e => {
+                console.error('Fetch fallback for worker.js failed:', e);
+            });
+            return placeholder;
+        } catch (e2) {
+            console.error('Fetch+blob fallback also failed:', e2);
+            return null;
+        }
+    }
+});
+    return new Worker(URL.createObjectURL(blob));
+}
+
+// ============== FILE UPLOAD HANDLING ==============
+document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+async function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    const success = document.getElementById('success');
+    const cancelBtn = document.getElementById('cancelUploadBtn');
+    
+    loading.classList.remove('hidden');
+    error.classList.add('hidden');
+    success.classList.add('hidden');
+    cancelBtn.classList.remove('hidden');
+    
+    updateProgress(5, 'Reading file (' + (file.size/1024/1024).toFixed(2) + ' MB)...');
+    
+    try {
+        const text = await file.text();
+        updateProgress(10, 'File loaded. Starting XML parsing in background...');
+        
+        const filters = {
+            sleep: document.getElementById('loadSleep').checked,
+            hr: document.getElementById('loadHR').checked,
+            resp: document.getElementById('loadResp').checked,
+            o2: document.getElementById('loadO2').checked
+        };
+        
+        currentWorker = createWorker();
+        isProcessing = true;
+        
+        currentWorker.onmessage = function(e) {
+            const { type, phase, percent, detail, results, message } = e.data;
+            
+            if (type === 'progress') {
+                updateProgress(percent, detail);
+            }
+            else if (type === 'parseComplete') {
+                rawData = results;
+                detectSleepPeriods();
+                identifyPartialDataNights();
+                
+                success.innerHTML = '✅ Loaded! Sleep: ' + rawData.sleep.length + ', HR: ' + rawData.hr.length + ', Resp: ' + rawData.resp.length + ', O₂: ' + rawData.o2.length;
+                success.classList.remove('hidden');
+                loading.classList.add('hidden');
+                cancelBtn.classList.add('hidden');
+                isProcessing = false;
+                currentWorker.terminate();
+                currentWorker = null;
+                
+                setTimeout(() => {
+                    document.getElementById('uploadCard').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    initDates();
+                    updateAnalysis();
+                }, 1000);
+            }
+            else if (type === 'error') {
+                error.textContent = 'Error: ' + message;
+                error.classList.remove('hidden');
+                loading.classList.add('hidden');
+                cancelBtn.classList.add('hidden');
+                isProcessing = false;
+            }
+            else if (type === 'cancelled') {
+                loading.classList.add('hidden');
+                cancelBtn.classList.add('hidden');
+                isProcessing = false;
+            }
+        };
+        
+        currentWorker.postMessage({ type: 'parse', data: { xml: text, filters } });
+        
+    } catch (err) {
+        error.textContent = 'Error reading file: ' + err.message;
+        error.classList.remove('hidden');
+        loading.classList.add('hidden');
+    }
+}
+
+function updateProgress(percent, text) {
+    document.getElementById('progressFill').style.width = percent + '%';
+    document.getElementById('progressText').textContent = text || '';
+}
+
+function cancelProcessing() {
+    if (currentWorker) {
+        currentWorker.postMessage({ type: 'cancel' });
+        setTimeout(() => {
+            if (currentWorker) { currentWorker.terminate(); currentWorker = null; }
+        }, 500);
+    }
+    isProcessing = false;
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('cancelUploadBtn').classList.add('hidden');
+    document.getElementById('updateOverlay').classList.add('hidden');
+}
+
+// ============== SLEEP PERIOD DETECTION ==============
+function detectSleepPeriods() {
+    detectedSleepPeriods = [];
+    const validStages = rawData.sleep.filter(s => s.stage !== 'Unknown');
+    if (validStages.length === 0) return;
+    
+    let currentPeriod = null;
+    for (const stage of validStages) {
+        if (!currentPeriod) {
+            currentPeriod = { start: stage.start, end: stage.end };
+        } else {
+            const gap = (stage.start - currentPeriod.end) / (1000 * 60);
+            if (gap < 60) { currentPeriod.end = stage.end; }
+            else { detectedSleepPeriods.push(currentPeriod); currentPeriod = { start: stage.start, end: stage.end }; }
+        }
+    }
+    if (currentPeriod) detectedSleepPeriods.push(currentPeriod);
+}
+
+function identifyPartialDataNights() {
+    partialDataNights = [];
+    const nightMap = {};
+    detectedSleepPeriods.forEach(p => {
+        const dateKey = new Date(p.start).toDateString();
+        const dur = (p.end - p.start) / (1000 * 60 * 60);
+        if (!nightMap[dateKey]) nightMap[dateKey] = { date: new Date(p.start), duration: 0, periods: 0 };
+        nightMap[dateKey].duration += dur;
+        nightMap[dateKey].periods++;
+    });
+    Object.values(nightMap).forEach(n => {
+        if (n.duration < 4 || n.periods > 3) partialDataNights.push(n.date);
+    });
+}
+
+// ============== UI HELPERS ==============
+function setSleepMode(mode) {
+    sleepMode = mode;
+    document.getElementById('autoModeBtn').classList.toggle('active', mode === 'auto');
+    document.getElementById('manualModeBtn').classList.toggle('active', mode === 'manual');
+    document.getElementById('manualSleepControls').classList.toggle('hidden', mode === 'auto');
+}
+
+function initDates() {
+    const end = new Date();
+    const start = new Date(); start.setDate(start.getDate() - 14);
+    document.getElementById('endDate').valueAsDate = end;
+    document.getElementById('startDate').valueAsDate = start;
+}
+
+function toggleSection(id) {
+    const el = document.getElementById(id);
+    el.classList.toggle('hidden');
+}
+
+// ============== UPDATE ANALYSIS ==============
+function updateAnalysis() {
+    if (isProcessing) return;
+    
+    const overlay = document.getElementById('updateOverlay');
+    const progressFill = document.getElementById('updateProgressFill');
+    const progressText = document.getElementById('updateProgressText');
+    const progressDetail = document.getElementById('updateProgressDetail');
+    
+    overlay.classList.remove('hidden');
+    progressFill.style.width = '5%';
+    progressText.textContent = 'Preparing analysis...';
+    progressDetail.textContent = '';
+    
+    const startDate = document.getElementById('startDate').valueAsDate?.getTime() || new Date('2020-01-01').getTime();
+    let endDate = document.getElementById('endDate').valueAsDate?.getTime() || Date.now();
+    endDate += 24 * 60 * 60 * 1000 - 1;
+    
+    const threshold = parseInt(document.getElementById('hrThreshold').value);
+    const manualStartH = parseInt((document.getElementById('sleepStart').value || '22:00').split(':')[0]);
+    const manualEndH = parseInt((document.getElementById('sleepEnd').value || '06:00').split(':')[0]);
+    
+    currentWorker = createWorker();
+    isProcessing = true;
+    
+    currentWorker.onmessage = function(e) {
+        const { type, phase, percent, detail, results, message } = e.data;
+        
+        if (type === 'progress') {
+            progressFill.style.width = percent + '%';
+            progressText.textContent = detail;
+        }
+        else if (type === 'analysisComplete') {
+            renderAllResults(results, startDate, endDate, threshold);
+            overlay.classList.add('hidden');
+            isProcessing = false;
+            currentWorker.terminate();
+            currentWorker = null;
+        }
+        else if (type === 'error') {
+            alert('Analysis error: ' + message);
+            overlay.classList.add('hidden');
+            isProcessing = false;
+        }
+        else if (type === 'cancelled') {
+            overlay.classList.add('hidden');
+            isProcessing = false;
+        }
+    };
+    
+    currentWorker.postMessage({
+        type: 'analyze',
+        data: {
+            sleep: rawData.sleep, hr: rawData.hr, resp: rawData.resp, o2: rawData.o2,
+            startDate, endDate, threshold,
+            sleepPeriods: detectedSleepPeriods,
+            sleepMode,
+            manualStart: manualStartH,
+            manualEnd: manualEndH
+        }
+    });
+}
+
+// ============== RENDER FUNCTIONS ==============
+function renderAllResults(data, startDate, endDate, threshold) {
+    const { sleepF, hrNight, hrDay, respNight, o2Night, hrEvents, lowO2, respLow, respHigh, hrNightStats, hrDayStats, respNightStats, o2NightStats, hrComparison, clinicalPatterns } = data;
+    
+    updateSummary(hrEvents, lowO2, respLow, respHigh, sleepF, startDate, endDate);
+    updatePartialDataAlert(startDate, endDate);
+    renderHeartStats(hrNightStats, hrEvents, threshold);
+    renderRespStats(respNightStats, respLow, respHigh);
+    renderOxygenStats(o2NightStats, lowO2);
+    renderSleepStats(sleepF);
+    renderSleepTimeline(sleepF);
+    renderHRByStageChart(hrEvents);
+    renderStatisticalAnalysis(hrComparison, hrNightStats, hrDayStats, hrNight, hrDay, respNight, o2Night);
+    renderClinicalAnalysis(clinicalPatterns, hrEvents, lowO2);
+    renderNightlyAnalysis(hrEvents, lowO2, respLow, respHigh, sleepF);
+}
+
+function updateSummary(hrEvents, lowO2, respLow, respHigh, sleepF, start, end) {
+    const totalSleep = sleepF.filter(s => !['InBed','Awake','Unknown'].includes(s.stage)).reduce((a,s) => a + (s.end - s.start) / 60000, 0);
+    document.getElementById('summaryBox').innerHTML = 
+        '<strong>📋 Analysis Summary (' + new Date(start).toLocaleDateString() + ' - ' + new Date(end).toLocaleDateString() + ')</strong><br><br>' +
+        '<strong>Heart Rate:</strong> ' + hrEvents.length + ' sustained elevated HR events during sleep<br>' +
+        '<strong>Blood Oxygen:</strong> ' + lowO2.length + ' low oxygen events (<90%)<br>' +
+        '<strong>Respiratory:</strong> ' + respLow.length + ' low rate, ' + respHigh.length + ' high rate events<br>' +
+        '<strong>Sleep:</strong> ' + (totalSleep/60).toFixed(1) + ' total hours recorded';
+}
+
+function updatePartialDataAlert(startDate, endDate) {
+    const inRange = partialDataNights.filter(d => d.getTime() >= startDate && d.getTime() <= endDate);
+    if (inRange.length > 0) {
+        document.getElementById('partialDataAlert').classList.remove('hidden');
+        document.getElementById('partialDataControls').classList.remove('hidden');
+        document.getElementById('partialDataAlert').innerHTML = '<div class="warning-box"><strong>⚠️ Partial Data:</strong> ' + inRange.length + ' night(s) with incomplete tracking found.</div>';
+    } else {
+        document.getElementById('partialDataAlert').classList.add('hidden');
+        document.getElementById('partialDataControls').classList.add('hidden');
+    }
+}
+
+function renderHeartStats(stats, events, threshold) {
+    if (stats.count === 0) {
+        document.getElementById('heartStatsGrid').innerHTML = '<div class="no-data-message">No heart rate data for selected period</div>';
+        return;
+    }
+    document.getElementById('heartStatsGrid').innerHTML = 
+        '<div class="stat-card heart"><div class="stat-label">HR Events</div><div class="stat-value">' + events.length + '</div><div class="stat-unit">≥' + threshold + ' BPM, 10+ min</div></div>' +
+        '<div class="stat-card heart"><div class="stat-label">Night HR</div><div class="stat-value">' + stats.median.toFixed(0) + '</div><div class="stat-unit">Median BPM</div></div>' +
+        '<div class="stat-card heart"><div class="stat-label">Range</div><div class="stat-value">' + stats.min.toFixed(0) + '-' + stats.max.toFixed(0) + '</div><div class="stat-unit">BPM</div></div>' +
+        '<div class="stat-card heart"><div class="stat-label">Samples</div><div class="stat-value">' + stats.count + '</div><div class="stat-unit">' + (stats.count < 30 ? '⚠️ Small' : '✓') + '</div></div>';
+}
+
+function renderRespStats(stats, low, high) {
+    if (stats.count === 0) {
+        document.getElementById('respStatsGrid').innerHTML = '<div class="no-data-message">No respiratory data for selected period</div>';
+        return;
+    }
+    document.getElementById('respStatsGrid').innerHTML = 
+        '<div class="stat-card resp"><div class="stat-label">Resp Rate</div><div class="stat-value">' + stats.median.toFixed(1) + '</div><div class="stat-unit">breaths/min</div></div>' +
+        '<div class="stat-card resp"><div class="stat-label">Range</div><div class="stat-value">' + stats.min.toFixed(1) + '-' + stats.max.toFixed(1) + '</div><div class="stat-unit">breaths/min</div></div>' +
+        '<div class="stat-card resp"><div class="stat-label">Low Events</div><div class="stat-value" style="color:#f59e0b">' + low.length + '</div><div class="stat-unit"><12/min</div></div>' +
+        '<div class="stat-card resp"><div class="stat-label">High Events</div><div class="stat-value" style="color:#ef4444">' + high.length + '</div><div class="stat-unit">>20/min</div></div>';
+}
+
+function renderOxygenStats(stats, lowO2) {
+    if (stats.count === 0) {
+        document.getElementById('oxygenStatsGrid').innerHTML = '<div class="no-data-message">No blood oxygen data for selected period</div>';
+        return;
+    }
+    const lowest = lowO2.length > 0 ? Math.min(...lowO2.map(o => o.value)).toFixed(1) + '%' : 'N/A';
+    document.getElementById('oxygenStatsGrid').innerHTML = 
+        '<div class="stat-card oxygen"><div class="stat-label">Blood O₂</div><div class="stat-value">' + stats.median.toFixed(1) + '%</div><div class="stat-unit">Median</div></div>' +
+        '<div class="stat-card oxygen"><div class="stat-label">Range</div><div class="stat-value">' + stats.min.toFixed(1) + '-' + stats.max.toFixed(1) + '%</div></div>' +
+        '<div class="stat-card oxygen"><div class="stat-label">Low O₂</div><div class="stat-value" style="color:#dc2626">' + lowO2.length + '</div><div class="stat-unit"><90%</div></div>' +
+        '<div class="stat-card oxygen"><div class="stat-label">Lowest</div><div class="stat-value" style="color:#dc2626">' + lowest + '</div></div>';
+}
+
+function renderSleepStats(sleepF) {
+    if (sleepF.length === 0) {
+        document.getElementById('sleepStatsGrid').innerHTML = '<div class="no-data-message">No sleep data for selected period</div>';
+        return;
+    }
+    const stages = ['REM', 'Deep', 'Core', 'Asleep', 'Awake'];
+    const byStage = {};
+    stages.forEach(s => byStage[s] = sleepF.filter(d => d.stage === s));
+    const totalSleep = sleepF.filter(s => !['InBed','Awake','Unknown'].includes(s.stage)).reduce((a, s) => a + (s.end - s.start) / 60000, 0);
+    
+    let html = '<div class="stat-card sleep"><div class="stat-label">Total Sleep</div><div class="stat-value">' + (totalSleep/60).toFixed(1) + '</div><div class="stat-unit">hours</div></div>';
+    stages.forEach(stage => {
+        const total = byStage[stage].reduce((a, d) => a + (d.end - d.start) / 60000, 0);
+        if (total > 0) html += '<div class="stat-card sleep"><div class="stat-label">' + stage + '</div><div class="stat-value">' + (total/60).toFixed(1) + '</div><div class="stat-unit">hours</div></div>';
+    });
+    document.getElementById('sleepStatsGrid').innerHTML = html;
+}
+
+function renderSleepTimeline(sleepF) {
+    const stages = ['Deep', 'Core', 'REM', 'Awake'];
+    const colors = { Deep: '#1e40af', Core: '#3b82f6', REM: '#ec4899', Awake: '#fbbf24' };
+    const nightMap = {};
+    
+    sleepF.forEach(s => {
+        if (['InBed', 'Unknown'].includes(s.stage)) return;
+        const dateKey = new Date(s.start).toDateString();
+        if (!nightMap[dateKey]) nightMap[dateKey] = [];
+        nightMap[dateKey].push(s);
+    });
+    
+    const numNights = Object.keys(nightMap).length;
+    if (numNights === 0) {
+        document.getElementById('sleepTimeline').innerHTML = '<div class="no-data-message">No sleep stage data available for timeline</div>';
+        return;
+    }
+    
+    const hourBuckets = {};
+    for (let h = 0; h <= 10; h += 0.5) hourBuckets[h] = { Deep: 0, Core: 0, REM: 0, Awake: 0 };
+    
+    Object.values(nightMap).forEach(night => {
+        night.sort((a, b) => a.start - b.start);
+        const startTime = night[0].start;
+        night.forEach(s => {
+            const hoursFromStart = (s.start - startTime) / (1000 * 60 * 60);
+            const bucket = Math.floor(hoursFromStart * 2) / 2;
+            if (hourBuckets[bucket] && hourBuckets[bucket][s.stage] !== undefined) hourBuckets[bucket][s.stage]++;
+        });
+    });
+    
+    let html = '<div class="chart-container"><div style="font-weight:600;margin-bottom:1rem;">Sleep Stage Progression (Typical Night)</div>';
+    html += '<p style="font-size:0.75rem;color:#64748b;margin-bottom:1rem;">Based on ' + numNights + ' nights</p>';
+    html += '<svg viewBox="0 0 800 300" style="width:100%;height:300px;">';
+    
+    const xScale = 700 / 10;
+    for (let h = 0; h <= 10; h++) {
+        const x = 50 + h * xScale;
+        html += '<text x="' + x + '" y="280" text-anchor="middle" font-size="10" fill="#64748b">' + h + 'h</text>';
+    }
+    
+    stages.forEach(stage => {
+        let path = '';
+        Object.entries(hourBuckets).forEach(([hour, data]) => {
+            const h = parseFloat(hour);
+            if (h > 10) return;
+            const pct = numNights > 0 ? data[stage] / numNights : 0;
+            const x = 50 + h * xScale;
+            const y = 250 - pct * 200;
+            path += (path === '' ? 'M ' : ' L ') + x + ' ' + y;
+        });
+        if (path) html += '<path d="' + path + '" stroke="' + colors[stage] + '" stroke-width="3" fill="none" opacity="0.8"/>';
+    });
+    
+    html += '</svg>';
+    html += '<div style="display:flex;justify-content:center;gap:1.5rem;margin-top:1rem;flex-wrap:wrap;">';
+    stages.forEach(stage => {
+        html += '<div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:20px;height:3px;background:' + colors[stage] + ';"></div><span style="font-size:0.85rem;">' + stage + '</span></div>';
+    });
+    html += '</div>';
+    html += '<div class="plain-english">💡 <strong>In Plain English:</strong> This shows your typical sleep journey. You start in lighter sleep (Core), move into deep sleep early, then cycle between REM and lighter stages.</div>';
+    html += '<div class="info-box" style="margin-top:1rem;"><strong>📱 Note:</strong> Apple uses "Deep"=N3, "Core"=N1+N2 combined, "REM"=REM. Clinical studies separate N1 and N2.</div>';
+    html += '</div>';
+    
+    document.getElementById('sleepTimeline').innerHTML = html;
+}
+
+function renderHRByStageChart(hrEvents) {
+    const stages = ['Awake', 'Core', 'Deep', 'REM', 'Unknown'];
+    const colors = { Awake: '#fbbf24', Core: '#3b82f6', Deep: '#1e40af', REM: '#ec4899', Unknown: '#9ca3af' };
+    const byStage = {};
+    stages.forEach(s => byStage[s] = hrEvents.filter(e => e.stage === s));
+    
+    if (hrEvents.length === 0) {
+        document.getElementById('hrByStageChart').innerHTML = '<div class="no-data-message">No elevated heart rate events detected during sleep</div>';
+        return;
+    }
+    
+    const total = hrEvents.length;
+    let html = '<div class="chart-container"><div style="font-weight:600;margin-bottom:1rem;">Heart Rate Events by Sleep Stage</div>';
+    html += '<svg width="100%" height="250" viewBox="0 0 600 250">';
+    
+    const centerX = 300, centerY = 125, radius = 100;
+    let currentAngle = -90;
+    
+    stages.forEach(stage => {
+        const count = byStage[stage].length;
+        if (count === 0) return;
+        const angle = (count / total) * 360;
+        const endAngle = currentAngle + angle;
+        const x1 = centerX + radius * Math.cos((currentAngle * Math.PI) / 180);
+        const y1 = centerY + radius * Math.sin((currentAngle * Math.PI) / 180);
+        const x2 = centerX + radius * Math.cos((endAngle * Math.PI) / 180);
+        const y2 = centerY + radius * Math.sin((endAngle * Math.PI) / 180);
+        const largeArc = angle > 180 ? 1 : 0;
+        
+        html += '<path d="M' + centerX + ',' + centerY + ' L' + x1 + ',' + y1 + ' A' + radius + ',' + radius + ' 0 ' + largeArc + ',1 ' + x2 + ',' + y2 + ' Z" fill="' + colors[stage] + '" opacity="0.85" stroke="white" stroke-width="2"/>';
+        
+        if (angle > 15) {
+            const labelAngle = currentAngle + angle / 2;
+            const labelX = centerX + (radius * 0.65) * Math.cos((labelAngle * Math.PI) / 180);
+            const labelY = centerY + (radius * 0.65) * Math.sin((labelAngle * Math.PI) / 180);
+            html += '<text x="' + labelX + '" y="' + labelY + '" text-anchor="middle" fill="white" font-size="14" font-weight="bold">' + ((count / total) * 100).toFixed(0) + '%</text>';
+        }
+        currentAngle = endAngle;
+    });
+    
+    html += '</svg>';
+    html += '<div style="display:flex;justify-content:center;gap:1rem;margin-top:1rem;flex-wrap:wrap;">';
+    stages.forEach(s => {
+        if (byStage[s].length > 0) html += '<div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;background:' + colors[s] + ';border-radius:4px;"></div><span style="font-size:0.85rem;">' + s + ': ' + byStage[s].length + '</span></div>';
+    });
+    html += '</div>';
+    
+    let maxStage = stages[0], maxCount = 0;
+    stages.forEach(s => { if (byStage[s].length > maxCount) { maxCount = byStage[s].length; maxStage = s; } });
+    
+    html += '<div class="plain-english">💡 Most HR events (' + maxCount + ') occurred during <strong>' + maxStage + '</strong> sleep.';
+    if (maxStage === 'REM') html += ' REM is when nightmares occur, which may explain elevated heart rate.';
+    else if (maxStage === 'Core') html += ' Core sleep events might suggest panic attacks or movement-related arousals.';
+    else if (maxStage === 'Deep') html += ' Deep sleep events may suggest breathing problems like sleep apnea.';
+    html += '</div></div>';
+    
+    document.getElementById('hrByStageChart').innerHTML = html;
+}
+
+function renderStatisticalAnalysis(comparison, nightStats, dayStats, hrNight, hrDay, respNight, o2Night) {
+    let html = '<h3>Day vs Night Heart Rate</h3>';
+    
+    if (nightStats.count < 2 || dayStats.count < 2) {
+        html += '<div class="no-data-message">Insufficient data for day/night comparison</div>';
+        document.getElementById('statisticalAnalysis').innerHTML = html;
+        return;
+    }
+    
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1rem 0;">';
+    
+    const sigColor = comparison.significant ? '#fecaca' : '#86efac';
+    html += '<div style="background:white;border:2px solid ' + sigColor + ';border-radius:0.75rem;padding:1.5rem;">';
+    html += '<div style="display:flex;align-items:center;margin-bottom:0.5rem;">';
+    html += '<span class="traffic-light ' + (comparison.significant ? 'red' : 'green') + '"></span>';
+    html += '<strong>' + (comparison.significant ? 'Significant Difference' : 'No Significant Difference') + '</strong></div>';
+    html += '<div style="font-size:0.9rem;line-height:1.6;">Night: ' + nightStats.median.toFixed(0) + ' BPM<br>Day: ' + dayStats.median.toFixed(0) + ' BPM<br>Diff: ' + Math.abs(comparison.diff).toFixed(1) + ' BPM</div></div>';
+    
+    const absEffect = Math.abs(comparison.effectSize);
+    const effectLabel = absEffect < 0.2 ? 'Tiny' : absEffect < 0.5 ? 'Small' : absEffect < 0.8 ? 'Medium' : 'Large';
+    html += '<div style="background:white;border:2px solid #e5e7eb;border-radius:0.75rem;padding:1.5rem;">';
+    html += '<div style="font-weight:600;margin-bottom:0.5rem;">Effect Size: ' + effectLabel + '</div>';
+    html += '<div style="font-size:2rem;font-weight:bold;color:#6366f1;">' + comparison.effectSize.toFixed(2) + '</div>';
+    html += '<div style="font-size:0.75rem;color:#64748b;">Cohen\'s d</div></div></div>';
+    
+    html += '<div class="plain-english">💡 <strong>In Plain English:</strong> ';
+    if (comparison.significant) {
+        const higher = nightStats.median > dayStats.median ? 'higher' : 'lower';
+        html += 'Your nighttime heart rate is <strong>' + higher + ' than daytime</strong> by ~' + Math.abs(comparison.diff).toFixed(0) + ' BPM. This difference is statistically significant.';
+    } else {
+        html += 'Your nighttime and daytime heart rates are similar. Any difference is small enough to be random variation.';
+    }
+    html += '</div>';
+    
+    html += '<button class="collapse-toggle" onclick="toggleSection(\'techDayNight\')" style="margin:0.5rem 0;">📊 View Technical Details</button>';
+    html += '<div id="techDayNight" class="hidden tech-details">';
+    html += '<strong>Method:</strong> Mann-Whitney U test (non-parametric)<br>';
+    html += 'Night: n=' + nightStats.count + ', median=' + nightStats.median.toFixed(1) + ', IQR=' + nightStats.iqr.toFixed(1) + '<br>';
+    html += 'Day: n=' + dayStats.count + ', median=' + dayStats.median.toFixed(1) + ', IQR=' + dayStats.iqr.toFixed(1) + '<br>';
+    html += 'Effect Size (Cohen\'s d): ' + comparison.effectSize.toFixed(3) + '<br>';
+    html += 'Result: ' + (comparison.significant ? '✓ Significant (p < 0.05)' : '✗ Not significant');
+    html += '</div>';
+    
+    document.getElementById('statisticalAnalysis').innerHTML = html;
+}
+
+function renderClinicalAnalysis(patterns, hrEvents, lowO2) {
+    let html = '<div class="info-box"><strong>📚 Clinical Reference:</strong><br>';
+    html += '• <strong>OSA:</strong> Oxygen drops + HR spikes, especially during deep sleep<br>';
+    html += '• <strong>PTSD/Nightmares:</strong> HR events during REM without oxygen drops<br>';
+    html += '• <strong>PLMD:</strong> Events during Core (N1/N2) sleep<br>';
+    html += '• <strong>Panic:</strong> Hyperventilation + HR spikes during lighter sleep</div>';
+    
+    html += '<h3>🔍 Pattern Analysis</h3>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0;">';
+    
+    const patternInfo = [
+        { key: 'osa', name: 'Sleep Apnea', color: '#3b82f6', icon: '😴' },
+        { key: 'ptsd', name: 'Nightmare/PTSD', color: '#ec4899', icon: '😰' },
+        { key: 'plmd', name: 'Limb Movements', color: '#8b5cf6', icon: '🦵' },
+        { key: 'panic', name: 'Panic Attacks', color: '#ef4444', icon: '😨' }
+    ];
+    
+    patternInfo.forEach(p => {
+        const pattern = patterns[p.key];
+        const pct = pattern.max > 0 ? ((pattern.score / pattern.max) * 100).toFixed(0) : 0;
+        const intensity = pattern.score / pattern.max;
+        const bgColor = intensity > 0.6 ? '#fef2f2' : intensity > 0.3 ? '#fef3c7' : '#f0fdf4';
+        const borderColor = intensity > 0.6 ? '#fecaca' : intensity > 0.3 ? '#fcd34d' : '#86efac';
+        
+        html += '<div style="background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:0.75rem;padding:1rem;">';
+        html += '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;"><span style="font-size:1.5rem;">' + p.icon + '</span><strong>' + p.name + '</strong></div>';
+        html += '<div style="font-size:2rem;font-weight:bold;color:' + p.color + ';">' + pct + '%</div>';
+        html += '<div style="font-size:0.75rem;color:#64748b;">' + pattern.score + ' of ' + pattern.max + ' criteria</div></div>';
+    });
+    
+    html += '</div>';
+    
+    // Find top pattern
+    const sorted = patternInfo.map(p => ({ ...p, ...patterns[p.key] })).sort((a, b) => b.score/b.max - a.score/a.max);
+    const top = sorted[0];
+    const topPct = top.max > 0 ? (top.score / top.max * 100) : 0;
+    
+    html += '<div class="plain-english">💡 <strong>In Plain English:</strong> ';
+    if (topPct > 60) {
+        html += 'Your data most strongly suggests <strong>' + top.name + '</strong> (' + topPct.toFixed(0) + '% match).';
+    } else if (topPct > 30) {
+        html += 'Your data shows moderate signs of <strong>' + top.name + '</strong> (' + topPct.toFixed(0) + '% match), but not definitive.';
+    } else {
+        html += 'Your data doesn\'t strongly match any single pattern. Could be mild/combined issues.';
+    }
+    html += '</div>';
+    
+    // Detailed findings
+    html += '<h3 style="margin-top:1.5rem;">📋 Detailed Findings</h3>';
+    patternInfo.forEach(p => {
+        const pattern = patterns[p.key];
+        if (pattern.findings.length > 0) {
+            html += '<div style="margin:0.75rem 0;padding:0.75rem;background:#f8fafc;border-left:4px solid ' + p.color + ';border-radius:0.5rem;">';
+            html += '<strong>' + p.icon + ' ' + p.name + ':</strong><br>';
+            pattern.findings.forEach(f => html += '• ' + f + '<br>');
+            html += '</div>';
+        }
+    });
+    
+    // Recommendations
+    html += '<h3 style="margin-top:1.5rem;">🩺 Recommendations</h3>';
+    html += '<div style="padding:1.5rem;background:#eff6ff;border:2px solid #bfdbfe;border-radius:0.75rem;">';
+    if (topPct > 60) {
+        html += '<strong style="color:#1e40af;">Strong ' + top.name + ' Pattern</strong><br><br>';
+        if (top.key === 'osa') html += 'Consider sleep study (polysomnography). Treatment may include CPAP.';
+        else if (top.key === 'ptsd') html += 'Consider sleep specialist + mental health eval. Imagery Rehearsal Therapy may help.';
+        else if (top.key === 'plmd') html += 'Consider sleep study. Check iron levels. Dopamine agonists may help.';
+        else if (top.key === 'panic') html += 'Consider psychiatry eval. CBT is first-line treatment.';
+    } else {
+        html += 'No strong pattern detected. If symptoms persist, consider comprehensive sleep study.';
+    }
+    html += '</div>';
+    
+    html += '<div class="warning-box" style="margin-top:1rem;"><strong>⚠️ Disclaimer:</strong> This is informational only, NOT a diagnosis. Consumer wearables have limitations. Please share with your healthcare provider.</div>';
+    
+    document.getElementById('clinicalAnalysis').innerHTML = html;
+}
+
+function renderNightlyAnalysis(hrEvents, lowO2, respLow, respHigh, sleepF) {
+    const allNights = {};
+    
+    sleepF.forEach(s => {
+        const dateKey = new Date(s.start).toDateString();
+        if (!allNights[dateKey]) allNights[dateKey] = { date: new Date(s.start), hrEvents: [], o2Events: [], respLow: [], respHigh: [], sleep: [] };
+        allNights[dateKey].sleep.push(s);
+    });
+    
+    hrEvents.forEach(e => {
+        const dateKey = new Date(e.start).toDateString();
+        if (!allNights[dateKey]) allNights[dateKey] = { date: new Date(e.start), hrEvents: [], o2Events: [], respLow: [], respHigh: [], sleep: [] };
+        allNights[dateKey].hrEvents.push(e);
+    });
+    
+    lowO2.forEach(e => {
+        const dateKey = new Date(e.start).toDateString();
+        if (allNights[dateKey]) allNights[dateKey].o2Events.push(e);
+    });
+    
+    respLow.forEach(e => {
+        const dateKey = new Date(e.start).toDateString();
+        if (allNights[dateKey]) allNights[dateKey].respLow.push(e);
+    });
+    
+    respHigh.forEach(e => {
+        const dateKey = new Date(e.start).toDateString();
+        if (allNights[dateKey]) allNights[dateKey].respHigh.push(e);
+    });
+    
+    const sorted = Object.entries(allNights).sort((a, b) => new Date(b[0]) - new Date(a[0]));
+    
+    let html = '';
+    if (sorted.length === 0) {
+        html = '<div class="no-data-message">No nightly data available</div>';
+    } else {
+        sorted.forEach(([key, night]) => {
+            const hasIssues = night.hrEvents.length > 0 || night.o2Events.length > 0;
+            const sleepMin = night.sleep.filter(s => !['InBed','Awake','Unknown'].includes(s.stage)).reduce((a, s) => a + (s.end - s.start) / 60000, 0);
+            
+            html += '<div class="night-card ' + (hasIssues ? 'has-events' : '') + '">';
+            html += '<div class="night-header"><div class="night-date">🌙 ' + night.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + '</div>';
+            html += '<div style="display:flex;gap:0.25rem;flex-wrap:wrap;">';
+            if (night.hrEvents.length) html += '<span class="badge badge-danger">❤️ ' + night.hrEvents.length + '</span>';
+            if (night.o2Events.length) html += '<span class="badge badge-warning">🫧 ' + night.o2Events.length + '</span>';
+            html += '</div></div>';
+            
+            html += '<div class="night-metrics">';
+            html += '<div class="night-metric"><div class="night-metric-label">Sleep</div><div class="night-metric-value">' + (sleepMin/60).toFixed(1) + 'h</div></div>';
+            if (night.hrEvents.length) {
+                const avgHR = night.hrEvents.reduce((a, e) => a + e.avg, 0) / night.hrEvents.length;
+                html += '<div class="night-metric"><div class="night-metric-label">Avg HR</div><div class="night-metric-value" style="color:#ef4444">' + avgHR.toFixed(0) + '</div></div>';
+            }
+            if (night.o2Events.length) {
+                const minO2 = Math.min(...night.o2Events.map(e => e.value));
+                html += '<div class="night-metric"><div class="night-metric-label">Low O₂</div><div class="night-metric-value" style="color:#f59e0b">' + minO2.toFixed(1) + '%</div></div>';
+            }
+            html += '</div></div>';
+        });
+    }
+    
+    document.getElementById('nightlyContainer').innerHTML = html;
+}
+
+// ============== EXPORT ==============
+function exportReport() {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    const threshold = document.getElementById('hrThreshold').value;
+    
+    let report = 'SLEEP ANALYSIS REPORT\n';
+    report += '=====================\n\n';
+    report += 'Generated: ' + new Date().toLocaleString() + '\n';
+    report += 'Period: ' + start + ' to ' + end + '\n';
+    report += 'HR Threshold: ≥' + threshold + ' BPM for 10+ min\n\n';
+    report += 'See the HTML interface for detailed statistics, visualizations, and clinical analysis.\n\n';
+    report += 'DISCLAIMER: This is informational only, NOT a medical diagnosis.\n';
+    report += 'Please share with your healthcare provider for proper evaluation.\n';
+    
+    const blob = new Blob([report], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sleep-analysis-' + new Date().toISOString().split('T')[0] + '.txt';
+    a.click();
+}
+</script>
+
+</body></html>
