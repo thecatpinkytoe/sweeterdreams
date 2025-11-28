@@ -1,0 +1,10 @@
+name: HealthExportKit
+options:
+  bundleIdPrefix: com.example
+targets:
+  HealthExportKit:
+    type: application
+    platform: iOS
+    sources: [Sources/HealthExportKit]
+    settings:
+      INFO_PLIST_FILE: Resources/Info.plist

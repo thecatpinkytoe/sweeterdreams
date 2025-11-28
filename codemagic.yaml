@@ -1,0 +1,20 @@
+workflows:
+  build-and-export:
+    name: Build and Export IPA
+    instance_type: mac_mini
+    environment:
+      vars:
+        BUNDLE_ID: com.example.HealthExportKit
+    scripts:
+      - name: Install xcodegen
+        script: |
+          gem install xcodeproj xcodegen
+      - name: Generate Xcode project
+        script: |
+          xcodegen generate
+      - name: Build and export
+        script: |
+          set -eux
+          xcodebuild -workspace HealthExportKit.xcworkspace -scheme HealthExportKit -configuration Release -allowProvisioningUpdates
+    artifacts:
+      - build/ipa/*.ipa
