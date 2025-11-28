@@ -1,7 +1,7 @@
 workflows:
   build-and-export:
     name: Build and Export IPA
-    instance_type: mac_m1
+    instance_type: mac_mini_m1
     environment:
       vars:
         BUNDLE_ID: com.example.HealthExportKit
