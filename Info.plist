@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.example.HealthExportKit</string>
+    <key>CFBundleName</key>
+    <string>HealthExportKit</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>Allows reading your Health data to export compact JSON for local analysis.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>Allows updating Health data if required.</string>
+</dict>
+</plist>
