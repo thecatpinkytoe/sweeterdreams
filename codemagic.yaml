@@ -1,60 +1,54 @@
 workflows:
   build-and-export-ios:
-    name: Build iOS unsigned (.ipa) for sideloading
+    name: Build iOS unsigned (.ipa) using XcodeGen
     max_build_duration: 30
     environment:
       xcode: latest
-      cocoapods: default
     scripts:
-      - name: Clean derived data
+      - name: Install XcodeGen
         script: |
-          rm -rf ~/Library/Developer/Xcode/DerivedData/*
+          brew install xcodegen
+
+      - name: Generate Xcode project
+        script: |
+          xcodegen generate
+          echo "Generated Xcode project:"
+          ls -R .
+
       - name: Build for device (unsigned)
         script: |
           set -o pipefail
-          # Try workspace or project — use whichever is present
-          if ls *.xcworkspace 1> /dev/null 2>&1; then
-            WORKSPACE=$(ls *.xcworkspace | head -n 1)
-            SCHEME=$(ls "$WORKSPACE" | sed -n '1p' 2>/dev/null || echo "$(basename "$WORKSPACE" .xcworkspace)")
-            xcodebuild build \
-              -workspace "$WORKSPACE" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO
-          elif ls *.xcodeproj 1> /dev/null 2>&1; then
-            PROJECT=$(ls *.xcodeproj | head -n 1)
-            SCHEME=$(basename "$PROJECT" .xcodeproj)
-            xcodebuild build \
-              -project "$PROJECT" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO
-          else
-            echo "ERROR: No .xcworkspace or .xcodeproj found in repo root"
-            exit 1
-          fi
+          PROJECT=$(ls *.xcodeproj | head -n 1)
+          SCHEME=$(basename "$PROJECT" .xcodeproj)
+
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
       - name: Package as .ipa
         script: |
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*Release-iphoneos" -prune -print 2>/dev/null | head -n 1)
+
           if [ -z "$APP_PATH" ]; then
-            # fallback: find any .app in DerivedData
             APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*.app" | head -n 1)
           fi
+
           if [ -z "$APP_PATH" ]; then
-            echo "ERROR: .app not found. Build probably failed."
+            echo "ERROR: .app not found."
             exit 1
           fi
-          mkdir -p Payload
+
+          mkdir Payload
           cp -R "$APP_PATH" Payload/
           zip -r app.zip Payload
           mv app.zip sweeterdreamsiOS1.ipa
+
     artifacts:
       - sweeterdreamsiOS1.ipa
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
-      - /tmp/xcodebuild_logs/*.log
