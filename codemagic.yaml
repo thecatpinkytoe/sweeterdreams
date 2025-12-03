@@ -1,55 +1,54 @@
 workflows:
-  ios-build:
-    name: iOS Build
+  build-and-export-ios:
+    name: Build iOS unsigned (.ipa) for sideloading
+    max_build_duration: 30
     environment:
       xcode: latest
+      cocoapods: default  # optional; only matters if you use pods
       vars:
-        APP_NAME: "sweeterdreamsiOS1"
+        # Since project file isn't obvious, use xcodebuild auto-detect
+        # If you know the exact project file and scheme, you can explicitly set them here
+        # XCODE_PROJECT: "YourProjectName.xcodeproj"
+        # XCODE_SCHEME: "YourSchemeName"
     scripts:
-      # -------------------------------------------------------
-      # Install XcodeGen (using Homebrew — recommended method)
-      # -------------------------------------------------------
-      - name: Install XcodeGen
+      - name: Clean derived data (optional but helps avoid stale builds)
         script: |
-          brew update
-          brew install xcodegen
-
-      # -------------------------------------------------------
-      # Generate Xcode project
-      # -------------------------------------------------------
-      - name: Run XcodeGen
+          rm -rf ~/Library/Developer/Xcode/DerivedData/*
+      - name: Build for device (unsigned)
         script: |
-          xcodegen generate
-
-      # -------------------------------------------------------
-      # Install CocoaPods if your project needs it (optional)
-      # If you have a Podfile, leave this. If not, remove it.
-      # -------------------------------------------------------
-      - name: Install CocoaPods
-        script: |
-          if [ -f "Podfile" ]; then
-            sudo gem install cocoapods
-            pod install
+          set -o pipefail
+          # Try building via workspace or project — whichever works
+          if [ -f *.xcworkspace ]; then
+            xcodebuild build \
+              -workspace "$(ls *.xcworkspace | head -n 1)" \
+              -scheme "$(ls *.xcworkspace | head -n1 | sed 's/\\.xcworkspace$//')" \
+              -configuration Release \
+              -sdk iphoneos \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
           else
-            echo "No Podfile found, skipping pods"
+            xcodebuild build \
+              -project "$(ls *.xcodeproj | head -n 1)" \
+              -scheme "$(ls *.xcodeproj | head -n1 | sed 's/\\.xcodeproj$//')" \
+              -configuration Release \
+              -sdk iphoneos \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
           fi
-
-      # -------------------------------------------------------
-      # Build the app (archive)
-      # -------------------------------------------------------
-      - name: Build iOS app
+      - name: Package as .ipa
         script: |
-          xcodebuild \
-            -workspace "${APP_NAME}.xcworkspace" \
-            -scheme "${APP_NAME}" \
-            -sdk iphoneos \
-            -configuration Release \
-            -archivePath build/${APP_NAME}.xcarchive \
-            archive | xcpretty
-
-      # -------------------------------------------------------
-      # Export IPA
-      # -------------------------------------------------------
-      - name: Export IPA
-        script: |
-          xcodebuild
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*Release-iphoneos" -maxdepth 3 | tail -n1)/$(ls *.xcodeproj | head -n1 | sed 's/\\.xcodeproj$//').app
+          if [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: .app not found. Build probably failed."
+            exit 1
+          fi
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+          zip -r app.zip Payload
+          mv app.zip sweeterdreamsiOS1.ipa
+    artifacts:
+      - sweeterdreamsiOS1.ipa
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - /tmp/xcodebuild_logs/*.log
