@@ -18,18 +18,24 @@ workflows:
       - name: Build for device (unsigned)
         script: |
           set -o pipefail
-          PROJECT=$(ls *.xcodeproj | head -n 1)
-          SCHEME=$(basename "$PROJECT" .xcodeproj)
 
-          xcodebuild \
-            -project "$PROJECT" \
-            -scheme "$SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+        # Find generated Xcode project (XcodeGen output)
+        PROJECT=$(ls *.xcodeproj | head -n 1)
+        echo "Detected project: $PROJECT"
+
+        # Infer scheme name from project name
+        SCHEME=$(basename "$PROJECT" .xcodeproj)
+        echo "Using scheme: $SCHEME"
+
+        xcodebuild \
+          -project "$PROJECT" \
+          -scheme "$SCHEME" \
+          -configuration Release \
+          -sdk iphoneos \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          build
 
       - name: Package as .ipa
         script: |
