@@ -4,6 +4,7 @@ workflows:
     max_build_duration: 30
     environment:
       xcode: latest
+
     scripts:
       - name: Install XcodeGen
         script: |
@@ -12,21 +13,26 @@ workflows:
       - name: Generate Xcode project
         script: |
           xcodegen generate
-          echo "Generated Xcode project:"
+          echo "Generated files:"
           ls -R .
 
       - name: Build for device (unsigned)
         script: |
           set -o pipefail
 
-          # Find generated Xcode project (XcodeGen output)
+          # Find generated Xcode project
           PROJECT=$(ls *.xcodeproj | head -n 1)
           echo "Detected project: $PROJECT"
 
-          # Infer scheme name from project name
+          if [ -z "$PROJECT" ]; then
+            echo "ERROR: XcodeGen did not generate a project."
+            exit 1
+          fi
+
+          # Infer scheme from project name
           SCHEME=$(basename "$PROJECT" .xcodeproj)
           echo "Using scheme: $SCHEME"
-  
+
           xcodebuild \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
@@ -42,20 +48,20 @@ workflows:
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*Release-iphoneos" -prune -print 2>/dev/null | head -n 1)
 
           if [ -z "$APP_PATH" ]; then
+            # fallback
             APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*.app" | head -n 1)
           fi
 
           if [ -z "$APP_PATH" ]; then
-            echo "ERROR: .app not found."
+            echo "ERROR: .app bundle not found."
             exit 1
           fi
 
-          mkdir Payload
+          mkdir -p Payload
           cp -R "$APP_PATH" Payload/
-          zip -r app.zip Payload
-          mv app.zip sweeterdreamsiOS1.ipa
+          zip -r SweeterDreams.ipa Payload
+          mv SweeterDreams.ipa SweeterDreams.ipa
 
     artifacts:
-      - sweeterdreamsiOS1.ipa
+      - SweeterDreams.ipa
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
-      # codemagic config
